@@ -52,21 +52,27 @@ def run(agent):
       return observations, actions
 
 
-def collect_episodes(agent, num):
-  """ Collect num episodes of the agent. """
-  observations, actions = [], []
+def collect_episodes(agent, num, pctg):
+  """ Collect num episodes of the agent and return the best pctg% of them. """
+  obs, acts, rewards, best_obs, best_acts = [], [], [], [], []
   for _ in range(num):
     observation, action = run(agent)
-    observations += observation
-    actions += action
-  return np.array(observations), torch.tensor(actions, dtype=torch.long)
+    obs.append(observation)
+    acts.append(action)
+    rewards.append(len(action))
+  percentile = np.percentile(rewards, pctg)
+  for i in range(len(rewards)):
+    if rewards[i] >= percentile:
+      best_obs += obs[i]
+      best_acts += acts[i]  
+  return np.array(best_obs), torch.tensor(best_acts, dtype=torch.long)
 
 
 def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
   validations = list()
   for epoch in range(epochs):
     for _ in range(batch_cnt):
-      observations, actions = collect_episodes(agent, batch_len)
+      observations, actions = collect_episodes(agent, batch_len, 70)
       out = agent(observations)
       loss = loss_fn(out, actions)
       optimizer.zero_grad()
