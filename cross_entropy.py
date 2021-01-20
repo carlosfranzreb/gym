@@ -27,11 +27,10 @@ class NN(nn.Module):
       nn.Linear(4, 16),
       nn.ReLU(),
       nn.Linear(16, 2),
-      nn.Softmax(dim=0)
-    ).double()
+    )
 
   def forward(self, observation):
-    tensor = torch.from_numpy(observation).double()
+    tensor = torch.from_numpy(observation).float()
     return self.pipe(tensor)
 
 
@@ -40,8 +39,9 @@ def run(agent):
   observations and actions. """
   env = gym.make('CartPole-v0')
   observations, actions = [env.reset()], []
+  softmax = nn.Softmax(dim=1)
   while True:
-    out = agent(observations[-1])
+    out = softmax(agent(observations[-1]))
     action = np.random.choice([0, 1], 1, p=out.tolist())[0]
     actions.append(action)
     observation, _, is_done, _ = env.step(action)
@@ -78,8 +78,11 @@ def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
-    validations.append((agent, len(run(agent)[1])))
-    print(f"Agent survived {validations[-1][1]} s in epoch {epoch}")
+      print(list(agent.parameters()))
+    times = [len(run(agent)[1]) for _ in range(batch_len)]
+    avg_time = sum(times) / len(times)
+    validations.append((agent, avg_time))
+    print(f"Agent survived {round(avg_time, 2)} s in epoch {epoch}")
   return validations
 
 
@@ -87,4 +90,5 @@ if __name__ == "__main__":
   agent = NN()
   loss_fn = torch.nn.NLLLoss()
   optimizer = torch.optim.Adam(agent.parameters(), lr=1e-2)
-  train(32, 100, 100, agent, optimizer, loss_fn)
+  validations = train(32, 100, 100, agent, optimizer, loss_fn)
+  torch.save(agent.paremeters(), 'agent.pt')
