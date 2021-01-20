@@ -53,8 +53,7 @@ def collect_outputs(num, agent):
   """ Collect num outputs from the cart pole env while using the agent
   for action selection. """
   env = gym.make('CartPole-v0')
-  env.reset()
-  observations = env.step(env.action_space.sample())[0]
+  observations =env.reset()
   outputs = [[observations]]
   for _ in range(num):
     out = agent(outputs[-1][0])
@@ -63,9 +62,10 @@ def collect_outputs(num, agent):
     outputs[-1].append(
       torch.tensor([is_done]).double()
     )  # reward for previous time step
-    outputs.append([observations])  # new set of observations
     if is_done:
-      env.reset()
+      outputs.append([env.reset()])
+    else:
+      outputs.append([observations])  # new set of observations
   env.close()
   return outputs[:-1]  # remove observation without reward
 
