@@ -24,72 +24,61 @@ class NN(nn.Module):
   def __init__(self):
     super(NN, self).__init__()
     self.pipe = nn.Sequential(
-      nn.Linear(4, 1),
+      nn.Linear(4, 16),
+      nn.ReLU(),
+      nn.Linear(16, 2),
       nn.Softmax(dim=0)
     ).double()
 
-  def forward(self, observations):
-    tensor = torch.from_numpy(observations).double()
+  def forward(self, observation):
+    tensor = torch.from_numpy(observation).double()
     return self.pipe(tensor)
 
 
 def run(agent):
-  """ Simulate a game with the agent and return the time he survived. """
+  """ Simulate a game with the agent and return a list with all 
+  observations and actions. """
   env = gym.make('CartPole-v0')
-  env.reset()
-  is_done = False
-  time = 0
-  outputs = env.step(env.action_space.sample())
-  while not is_done:
-    time += 1
-    observations, _, is_done, _ = outputs
-    out = agent(observations)
-    action = np.random.choice([0, 1], 1, p=[1-out, out])
-    outputs = env.step(action[0])
-  return time
-
-
-def collect_outputs(num, agent):
-  """ Collect num outputs from the cart pole env while using the agent
-  for action selection. """
-  env = gym.make('CartPole-v0')
-  observations =env.reset()
-  outputs = [[observations]]
-  for _ in range(num):
-    out = agent(outputs[-1][0])
-    action = np.random.choice([0, 1], 1, p=[1-out, out])
-    observations, _, is_done, _ = env.step(action[0])
-    outputs[-1].append(
-      torch.tensor([is_done]).double()
-    )  # reward for previous time step
-    if is_done:
-      outputs.append([env.reset()])
+  observations, actions = [env.reset()], []
+  while True:
+    out = agent(observations[-1])
+    action = np.random.choice([0, 1], 1, p=out.tolist())[0]
+    actions.append(action)
+    observation, _, is_done, _ = env.step(action)
+    if not is_done:
+      observations.append(observation)
     else:
-      outputs.append([observations])  # new set of observations
-  env.close()
-  return outputs[:-1]  # remove observation without reward
+      env.close()
+      return observations, actions
+
+
+def collect_episodes(agent, num):
+  """ Collect num episodes of the agent. """
+  observations, actions = [], []
+  for _ in range(num):
+    observation, action = run(agent)
+    observations += observation
+    actions += action
+  return np.array(observations), torch.tensor(actions, dtype=torch.long)
 
 
 def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
   validations = list()
   for epoch in range(epochs):
     for _ in range(batch_cnt):
-      outputs = collect_outputs(batch_len, agent)
-      for observations, reward in outputs:
-        out = agent(observations)
-        loss = loss_fn(out, reward)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    validations.append((agent, run(agent)))
+      observations, actions = collect_episodes(agent, batch_len)
+      out = agent(observations)
+      loss = loss_fn(out, actions)
+      optimizer.zero_grad()
+      loss.backward()
+      optimizer.step()
+    validations.append((agent, len(run(agent)[1])))
     print(f"Agent survived {validations[-1][1]} s in epoch {epoch}")
   return validations
 
 
 if __name__ == "__main__":
   agent = NN()
-  loss_fn = torch.nn.BCELoss()
+  loss_fn = torch.nn.NLLLoss()
   optimizer = torch.optim.Adam(agent.parameters(), lr=1e-2)
-  validations = train(30, 100, 500, agent, optimizer, loss_fn)
-  times = [v[1] for v in validations]
-  plt.plot(times)
+  train(32, 100, 100, agent, optimizer, loss_fn)
