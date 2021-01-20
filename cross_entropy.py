@@ -29,9 +29,8 @@ class Net(nn.Module):
       nn.Linear(16, 2),
     )
 
-  def forward(self, observation):
-    tensor = torch.from_numpy(observation).float()
-    return self.pipe(tensor)
+  def forward(self, x):
+    return self.pipe(x)
 
 
 def run(agent):
@@ -39,10 +38,11 @@ def run(agent):
   observations and actions. """
   env = gym.make('CartPole-v0')
   observations, actions = [env.reset()], []
-  softmax = nn.Softmax(dim=1)
+  softmax = nn.Softmax(dim=0)
   while True:
-    out = softmax(agent(observations[-1]))
-    action = np.random.choice([0, 1], 1, p=out.tolist())[0]
+    out = softmax(agent(torch.tensor(observations[-1], dtype=torch.float)))
+    probabilities = normalize(out)
+    action = np.random.choice(out.size(0), 1, p=probabilities)[0]
     actions.append(action)
     observation, _, is_done, _ = env.step(action)
     if not is_done:
@@ -64,7 +64,8 @@ def collect_episodes(agent, num, pctg):
     if rewards[i] >= percentile:
       best_obs += obs[i]
       best_acts += acts[i]  
-  return np.array(best_obs), torch.tensor(best_acts, dtype=torch.long)
+  return torch.tensor(best_obs, dtype=torch.float), \
+    torch.tensor(best_acts, dtype=torch.long)
 
 
 def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
@@ -77,7 +78,6 @@ def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
-      print(list(agent.parameters()))
     times = [len(run(agent)[1]) for _ in range(batch_len)]
     avg_time = sum(times) / len(times)
     validations.append((agent, avg_time))
@@ -85,9 +85,15 @@ def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
   return validations
 
 
+def normalize(tensor):
+  arr = tensor.tolist()
+  total = sum(arr)
+  return [elem / total for elem in arr]
+
+
 if __name__ == "__main__":
   agent = Net()
   loss_fn = nn.CrossEntropyLoss()
   optimizer = torch.optim.Adam(agent.parameters(), lr=1e-2)
-  validations = train(32, 100, 100, agent, optimizer, loss_fn)
+  validations = train(16, 30, 10, agent, optimizer, loss_fn)
   torch.save(agent.paremeters(), 'agent.pt')
