@@ -20,9 +20,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-class NN(nn.Module):
+class Net(nn.Module):
   def __init__(self):
-    super(NN, self).__init__()
+    super(Net, self).__init__()
     self.pipe = nn.Sequential(
       nn.Linear(4, 16),
       nn.ReLU(),
@@ -50,7 +50,6 @@ def run(agent):
     else:
       env.close()
       return observations, actions
-
 
 def collect_episodes(agent, num, pctg):
   """ Collect num episodes of the agent and return the best pctg% of them. """
@@ -87,8 +86,8 @@ def train(batch_len, batch_cnt, epochs, agent, optimizer, loss_fn):
 
 
 if __name__ == "__main__":
-  agent = NN()
-  loss_fn = torch.nn.NLLLoss()
+  agent = Net()
+  loss_fn = nn.CrossEntropyLoss()
   optimizer = torch.optim.Adam(agent.parameters(), lr=1e-2)
   validations = train(32, 100, 100, agent, optimizer, loss_fn)
   torch.save(agent.paremeters(), 'agent.pt')
