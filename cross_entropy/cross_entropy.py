@@ -102,5 +102,5 @@ def train_cartpole(f):
 
 
 if __name__ == "__main__":
-  train_cartpole('second_agent.py')
+  train_cartpole('second_agent.pt')
 
