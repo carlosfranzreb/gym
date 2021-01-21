@@ -39,13 +39,27 @@ Episode Termination:
 
 
 import gym
+from cross_entropy import Net, normalize, train
+import torch
+import numpy as np
 
 
-env = gym.make('CartPole-v0')
-env.reset()
-for _ in range(1000):
-  env.render()
-  res = env.step(env.action_space.sample()) # take a random action
-  print(res)
-  break
-env.close()
+def show_game(env, agent):
+  softmax = torch.nn.Softmax(dim=0)
+  observations = env.reset()
+  while True:
+    env.render()
+    out = softmax(agent(torch.tensor(observations, dtype=torch.float)))
+    probabilities = normalize(out)
+    action = np.random.choice(out.size(0), 1, p=probabilities)[0]
+    observations, _, is_done, _ = env.step(action)
+    if is_done:
+      env.close()
+      break  
+
+
+if __name__ == "__main__":
+  net = Net(4, 16, 2)  # params taken from cross_entropy.py
+  net.load_state_dict(torch.load('agent_cartpole.pt'))
+  env = gym.make('CartPole-v0')
+  show_game(env, net)
