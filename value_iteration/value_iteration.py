@@ -8,9 +8,6 @@
     reachable states and update the value with the max. one.
 3. Play several episodes. If the desired avg. reward was reached, stop. 
   Else, go back to step 1.
-
-Value iteration loop:
-1. 
 """
 
 
