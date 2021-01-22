@@ -52,8 +52,8 @@ class Agent:
     the reward and the value of that state. """
     value = 0
     total = sum(self.transitions[(source, action)].values())
-    for target in self.transitions[(source, action)]:
-      p = self.transitions[(source, action)][target] / total
+    for target, count in self.transitions[(source, action)].items():
+      p = count / total
       target_value = self.gamma * self.values[target]
       value += p * (self.rewards[(source, action, target)] + target_value)
     return value
