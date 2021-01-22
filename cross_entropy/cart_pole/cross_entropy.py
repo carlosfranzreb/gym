@@ -49,6 +49,7 @@ def run(env, agent):
     else:
       return observations, actions
 
+
 def collect_episodes(env, agent, num, pctg):
   """ Collect num episodes of the agent and return the best pctg% of them. """
   obs, acts, rewards, best_obs, best_acts = [], [], [], [], []
