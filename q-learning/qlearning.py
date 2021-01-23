@@ -1,4 +1,4 @@
-"""
+""" Learn Q-values with the value iteration loop.
 1. Play 100 games to populate the reward and transition tables.
   a. Reward table: (source, action, target) -> reward.
   b. Transition table: (source, action) -> count(target) for all targets.
