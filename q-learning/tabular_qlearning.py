@@ -8,7 +8,7 @@
 
 import gym
 import collections
-from copy import deepcopy
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Agent:
@@ -61,14 +61,17 @@ class Agent:
 def train(agent, desired_reward, test_cnt):
   i = 0
   avg_reward = -1
+  writer = SummaryWriter(comment="-q-learning")
   while avg_reward < desired_reward:
     agent.update_value(*agent.sample_env())
     rewards = [agent.run() for _ in range(test_cnt)]
     avg_reward = sum(rewards) / len(rewards)
+    writer.add_scalar("reward", avg_reward, i)
     print(f'{i}: {avg_reward}')
     i += 1
+  writer.close()
 
 
 if __name__ == "__main__":
   agent = Agent('FrozenLake-v0', .9, .2)
-  train(agent, .9, 20)
+  train(agent, .8, 20)
